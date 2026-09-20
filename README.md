@@ -136,6 +136,18 @@ with one, otherwise the model's name or path. A server hosting several models (r
 lists them all, and "first" is then arbitrary — set `model` in `config.toml` and drop the
 `model` line from the wrapper in that case.
 
+## Agent context files
+
+`AGENTS.md` (with `CLAUDE.md` symlinked to it, so Claude Code and Codex read the same file) is
+what an agent loads at the start of every session. It is short on purpose; detail lives in
+`agent_docs/` and is read on demand. The split matters if you copy `.devcontainer/` elsewhere:
+
+- `.devcontainer/AGENTS.md` and `.devcontainer/agent_docs/` describe life *inside the
+  container* — environment quirks, the Codex integration, what a rebuild discards — and travel
+  with the directory. In the new project, add one line to your own `AGENTS.md`:
+  `@.devcontainer/AGENTS.md` (Claude Code imports it; Codex reads it as a pointer).
+- The root `AGENTS.md` and `agent_docs/` are about *this* repository only.
+
 ## SpecStory
 
 SpecStory wraps a terminal agent and auto-saves the conversation as markdown under
