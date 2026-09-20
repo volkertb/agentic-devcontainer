@@ -48,7 +48,7 @@ not `127.0.0.1`, which inside a container means the container itself.
 ```toml
 model_provider = "llamacpp"
 model = "local"               # any name: a single-model llama-server ignores it
-model_context_window = 32768  # keep in sync with llama-server's -c (check /props)
+model_context_window = 32768  # fallback only, see below
 
 [model_providers.llamacpp]
 name = "llama.cpp"
@@ -86,9 +86,23 @@ Two things you will see that are not errors:
 - `unsupported Responses tool type 'namespace' skipped` (and `'web_search'`) in the server log.
   llama-server drops the Codex tool types it does not implement and carries on.
 
-`model_context_window` should not exceed what the server actually allocated. Check with
-`curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx` and raise the
-setting if the server has more headroom than 32768.
+### Context window
+
+Codex cannot ask a provider for its context size — its model metadata is a static catalog
+of OpenAI models — and `config.toml` cannot compute values. So `codex` on `PATH` is a wrapper
+(`.devcontainer/codex-wrapper.sh`, installed as `~/.local/bin/codex`, ahead of the real
+binary) that asks llama-server at launch and passes the answer as a command-line override:
+
+```bash
+curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx   # per-slot n_ctx
+codex -c model_context_window=<that>                                      # what the wrapper runs
+```
+
+The value is read once, when Codex starts; restart Codex after restarting llama-server with a
+different `-c`. If the server is unreachable at launch the wrapper falls through to the plain
+binary, and `model_context_window` from `config.toml` applies — that is the only reason it is
+still there. `specstory run codex` goes through the wrapper too, since it resolves `codex` via
+`PATH`. `/usr/local/bin/codex` remains the unwrapped binary if you ever need it.
 
 ## SpecStory
 
@@ -334,7 +348,7 @@ everyone in the container. That is the intent; none are needed for normal develo
 
 - BuildKit cache mounts hold apt's `.deb` downloads and package lists between builds.
 - Layers are ordered coldest first: apt, then uv, then the pinned SpecStory and Codex downloads.
-- `codex-config.toml` is copied last, so editing it rebuilds one trivial layer, not the toolchain.
+- `codex-config.toml` and `codex-wrapper.sh` are copied last, so editing them rebuilds only trivial layers, not the toolchain.
 
 ## Other architectures
 

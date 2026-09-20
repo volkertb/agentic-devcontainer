@@ -9,7 +9,7 @@
 # or TOML folds them into that table instead.
 model_provider = "llamacpp"
 model = "local"               # any name: a single-model llama-server ignores the field
-model_context_window = 32768  # keep in sync with llama-server's -c (check /props n_ctx)
+model_context_window = 32768  # fallback only: the codex wrapper reads the real n_ctx from /props
 
 [model_providers.llamacpp]
 name = "llama.cpp"

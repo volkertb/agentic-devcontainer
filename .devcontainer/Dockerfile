@@ -133,6 +133,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Points Codex at the host's llama-server. Edit this file to change model or endpoint.
 COPY --chown=${USERNAME}:${USERNAME} codex-config.toml /home/${USERNAME}/.codex/config.toml
 
+# `codex` on PATH resolves to this wrapper (~/.local/bin precedes /usr/local/bin below),
+# which passes llama-server's actual context size to the real binary at launch.
+COPY --chown=${USERNAME}:${USERNAME} --chmod=0755 codex-wrapper.sh /home/${USERNAME}/.local/bin/codex
+
 # Default lives here, not in containerEnv, so .env (docker --env-file) can override it.
 # Codex itself reads config.toml; this is for ad-hoc checks and other tools.
 ENV LLAMA_SERVER_URL=http://host.docker.internal:9931 \
