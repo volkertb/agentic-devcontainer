@@ -1,0 +1,216 @@
+# Generic dev container
+
+Debian-based dev container for agentic coding: non-root user, a broad CLI toolchain,
+Claude Code + Codex CLI + SpecStory, and Codex wired to a llama-server on the host.
+
+## Prerequisite
+
+A `llama-server` — or any server speaking the OpenAI *Responses* API — listening on
+**port 9931 on your host**. Choosing, tuning and starting that model server is out of scope
+here; this container only consumes it. See *llama-server on the host* below for the one
+host-side detail that matters (which address it binds to).
+
+## First run
+
+```bash
+cp .devcontainer/.env.example .devcontainer/.env   # required: runArgs passes --env-file
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . bash
+```
+
+VS Code, JetBrains and Zed pick the config up automatically when you open the folder.
+
+## What's inside
+
+| | |
+|---|---|
+| Base | `mcr.microsoft.com/devcontainers/base:trixie` (Debian 13), amd64 + arm64 |
+| User | `vscode`, uid 1000, **no route to root**, uid realigned to your host user on Linux |
+| Tools | gcc/g++/make/cmake, gdb, Python 3 + pipx + uv, Node LTS, git, jq, ripgrep, fd, bat, fzf, xxd, sqlite3, socat, tmux, shellcheck, archives, net utils |
+| Agents | Claude Code, Codex CLI (`codex`) |
+| Capture | SpecStory CLI (`specstory`) |
+
+Everything is installed at build time — there is no `postCreateCommand`, so creating a
+container from a built image is instant and needs no network.
+
+## Codex and llama-server
+
+`.devcontainer/codex-config.toml` is copied to `~/.codex/config.toml` during the build.
+The one change from a host-side Codex setup: the endpoint is **`host.docker.internal`**,
+not `127.0.0.1`, which inside a container means the container itself.
+
+```toml
+model_provider = "llamacpp"
+model = "local"               # must match llama-server's -a alias
+model_context_window = 32768  # keep in sync with llama-server's -c
+
+[model_providers.llamacpp]
+name = "llama.cpp"
+base_url = "http://host.docker.internal:9931/v1"
+wire_api = "responses"
+```
+
+Top-level keys must stay above the `[model_providers.*]` header or TOML folds them into
+that table. No API key is needed — a keyless local endpoint is a first-class case for
+Codex. If your server requires one, add `env_key = "MY_VAR"` and set `MY_VAR` in `.env`.
+
+Verify the endpoint from inside the container before blaming Codex:
+
+```bash
+curl $LLAMA_SERVER_URL/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{"model":"local","input":"say hi","stream":false}'
+```
+
+A Responses-shaped object back means the integration surface is good; then just run `codex`.
+For a one-off test against a different endpoint without editing the config,
+`CODEX_OSS_BASE_URL=http://host.docker.internal:9931/v1` overrides Codex's built-in OSS provider.
+
+If Codex complains about its own sandbox, note it is already inside a container — setting
+`sandbox_mode` in `config.toml` is the knob to reach for.
+
+## SpecStory
+
+SpecStory wraps a terminal agent and auto-saves the conversation as markdown under
+`.specstory/history/` in the project — your bind-mounted workspace, so transcripts land on
+your host and survive the container.
+
+```bash
+specstory check          # which agents it can see
+specstory run claude     # Claude Code, with auto-save
+specstory run codex      # Codex, with auto-save
+specstory watch          # save sessions from an agent you start yourself
+specstory search <query> # search past sessions
+```
+
+`specstory sync`, `specstory skills` and `specstory login` are cloud features (Pro plan);
+everything above is local-only and needs no account.
+
+**Before committing `.specstory/history/`, read it.** Transcripts can contain keys, paths and
+internal detail. Only `.specstory/debug/` is git-ignored by default.
+
+## llama-server on the host
+
+The container reaches the host as `host.docker.internal` on every OS.
+
+- **macOS / Windows (Docker Desktop):** works with llama-server bound to `127.0.0.1`. Nothing to do.
+- **Linux (native Docker):** `host.docker.internal` resolves to the bridge gateway (usually
+  `172.17.0.1`), which cannot reach a loopback-bound process. Bind llama-server to the bridge
+  address instead — still not exposed to your LAN:
+
+  ```bash
+  llama-server --host 172.17.0.1 --port 9931   # ...plus your own model/tuning flags
+  ```
+
+  Binding `0.0.0.0` also works but exposes the endpoint to your network; prefer the bridge address.
+
+## Download verification
+
+Every artifact fetched during the build is authenticated, and every version is pinned —
+pinning is what makes a checksum meaningful in the first place.
+
+| Artifact | How it is verified |
+|---|---|
+| apt packages | GPG signatures on the Debian repo metadata (apt does this itself) |
+| uv / uvx | SHA256 from the release's `.tar.gz.sha256`, checked before install |
+| SpecStory CLI | SHA256 from the release's `checksums.txt`, checked before install |
+| Codex CLI | SHA256 pinned in the Dockerfile — upstream publishes none (see below) |
+| Base image | Tag only — pin a digest to harden (see below) |
+
+A mismatch fails the build: each `RUN` uses `set -eux` with `sha256sum -c`, so a tampered or
+truncated download stops the build rather than being installed.
+
+Codex is the exception that needs care. The `openai/codex` release publishes no `.sha256`
+files, so `CODEX_SHA256_AMD64` / `CODEX_SHA256_ARM64` are pinned in the Dockerfile alongside
+`CODEX_VERSION` — deliberately *not* exposed as `devcontainer.json` build args, so nobody can
+bump the version while leaving stale digests behind. To upgrade, change all three together:
+
+```bash
+V=0.156.0
+for T in x86_64 aarch64; do
+  curl -fsSL "https://github.com/openai/codex/releases/download/rust-v$V/codex-$T-unknown-linux-musl.tar.gz" \
+    | sha256sum | sed "s|-|$T|"
+done
+```
+
+To also pin the base image, resolve its multi-arch digest — the index digest covers every
+architecture, so this stays arch-neutral:
+
+```bash
+docker buildx imagetools inspect mcr.microsoft.com/devcontainers/base:trixie | head -2
+# then: "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie@sha256:<digest>"
+```
+
+Pinning the digest freezes OS security updates until you bump it — worth it for reproducible
+builds, but only if you refresh it deliberately.
+
+## Working as root
+
+The container user cannot become root. There is no `sudo` or `doas`, root's password is
+locked, every setuid/setgid bit is stripped, and `no-new-privileges` is enforced by the
+kernel. Nothing in the container runs as root either, so there is no root process to attack.
+
+When you need root, open a second session **from your host**, where you already have that
+authority. Find the container and step in:
+
+```bash
+docker ps                                    # find it by image or name
+docker exec -it -u root <container> bash
+```
+
+Or, from the project folder, in one line:
+
+```bash
+docker exec -it -u root "$(docker ps -q -f label=devcontainer.local_folder=$PWD)" bash
+```
+
+Then work normally — you are root:
+
+```bash
+apt-get update && apt-get install -y <package>
+```
+
+This works because the Docker daemon *starts* that shell as root. It is not an escalation
+from inside the container, so `no-new-privileges` does not block it, and the agent running
+in the container has no way to do the same thing.
+
+**Changes made this way vanish on rebuild.** They are perfect for trying something out; once
+you know what you need, move it into the Dockerfile so it survives and stays reproducible.
+
+### Re-enabling sudo (not recommended)
+
+Sudo is off by default. Turning it on takes **two** changes, and both are required:
+
+1. `"ALLOW_SUDO": "true"` in `build.args` in `devcontainer.json`
+2. Delete the `"--security-opt=no-new-privileges:true"` line from `runArgs`
+
+Then rebuild. With only the first, sudo is installed but the kernel refuses to let it
+elevate — it will fail with a permissions error, which looks like a bug and is not one.
+
+Stripping setuid also disables `su`, `mount`, `fusermount3`, `pkexec` and `passwd` for
+everyone in the container. That is the intent; none are needed for normal development.
+
+## Security notes
+
+- Secrets live in `.devcontainer/.env`, which is git-ignored. `.env.example` is the tracked template.
+- Codex talks only to your own machine; no model traffic leaves the host unless you add a hosted provider.
+- The Docker socket is deliberately **not** mounted; an agent in the container cannot control the host engine.
+- No path to root from inside the container, so an agent that goes wrong is confined to the
+  `vscode` user and the bind-mounted workspace. The remaining boundary is the container itself —
+  harden that further with Docker rootless mode or userns-remap on the host.
+- The hardening is enforced at two levels deliberately: the image removes the tools, and
+  `no-new-privileges` blocks the whole class of escalation even if a feature or a later
+  `apt-get install` puts a setuid binary back.
+
+## Build performance
+
+- BuildKit cache mounts hold apt's `.deb` downloads and package lists between builds.
+- Layers are ordered coldest first: apt, then uv, then the pinned SpecStory and Codex downloads.
+- `codex-config.toml` is copied last, so editing it rebuilds one trivial layer, not the toolchain.
+
+## Other architectures
+
+MCR publishes amd64 and arm64 only. For riscv64, set the `BASE_IMAGE` build arg to `debian:trixie`;
+the Dockerfile creates the `vscode` user when the base image lacks it. uv ships a `riscv64gc` build
+and is installed there too. SpecStory and Codex publish no riscv64 binaries — those steps skip
+themselves rather than failing the build, so you get a working container without those two tools.

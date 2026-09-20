@@ -1,0 +1,15 @@
+# Codex -> llama-server on the host. Copied to ~/.codex/config.toml at build time.
+# The host is reachable as host.docker.internal, never 127.0.0.1, from inside a container.
+
+# These top-level keys MUST stay above the [model_providers.*] header,
+# or TOML folds them into that table instead.
+model_provider = "llamacpp"
+model = "local"               # must match llama-server's -a alias (else the .gguf path)
+model_context_window = 32768  # keep in sync with llama-server's -c
+
+[model_providers.llamacpp]
+name = "llama.cpp"
+base_url = "http://host.docker.internal:9931/v1"
+wire_api = "responses"
+# No env_key: a keyless local endpoint is a first-class case for Codex.
+# If your llama-server needs a key, add env_key = "MY_VAR" and set MY_VAR in .env.

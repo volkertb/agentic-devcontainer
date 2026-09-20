@@ -1,0 +1,7 @@
+# Secrets and per-machine overrides for the dev container.
+.devcontainer/.env
+.env
+
+# SpecStory debug logs. Session history under .specstory/history/ is intentionally
+# left tracked — commit it deliberately, and check it for secrets first.
+.specstory/debug/
