@@ -37,7 +37,7 @@ for tool in curl jq; do
 done
 
 echo "Fetching chat template from $url/props"
-template="$(curl -fsS "$url/props" | jq -r '.chat_template // empty')"
+template="$(curl -fsS --max-time 10 "$url/props" | jq -r '.chat_template // empty' || true)"
 if [ -z "$template" ]; then
   echo "error: no chat_template in $url/props (is llama-server running there?)" >&2
   exit 1
