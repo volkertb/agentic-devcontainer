@@ -113,6 +113,12 @@ RUN set -eux; \
     chmod 0755 /usr/local/bin/codex; \
     rm -f codex.tgz
 
+# TEMPORARY: remove together with bwrap-shim.sh once openai/codex#44329 is fixed upstream.
+# Codex's sandbox asks bubblewrap for a fresh /proc, which the kernel refuses under Docker's
+# masked /proc. Codex has a `--no-proc` fallback but misses bubblewrap >= 0.12's error wording,
+# so this shim, first on PATH, makes that decision instead.
+COPY --chmod=0755 bwrap-shim.sh /usr/local/bin/bwrap
+
 # Privilege hardening, last so it also strips anything the steps above installed.
 # Default strips every setuid/setgid bit and locks root, leaving no in-container path to root.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \

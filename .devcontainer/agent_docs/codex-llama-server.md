@@ -19,6 +19,11 @@ are the full account. This is the map, the things that look like errors and are 
 - `seccomp.json` (via `runArgs`) → lets bubblewrap create user namespaces so Codex's sandbox
   works. Regenerate with `make-seccomp.sh`; it is Docker's default + `unshare clone mount
   umount2 pivot_root setns`.
+- `bwrap-shim.sh` → `/usr/local/bin/bwrap`, ahead of `/usr/bin/bwrap`. **Temporary**: drops
+  `--proc` when the kernel refuses a fresh procfs (Docker's masked `/proc`), which Codex's own
+  `--no-proc` fallback fails to detect with bubblewrap ≥ 0.12 (openai/codex#44329). On every
+  `CODEX_VERSION` bump, check the issue; once fixed, delete the shim, its Dockerfile `COPY` line
+  and the README paragraph, and confirm `codex sandbox -- true` still passes without it.
 - `patch-chat-template.sh` → host-side fix for templates that reject Codex's mid-conversation
   `developer` messages. Output goes to `--chat-template-file` on the host.
 
@@ -28,6 +33,7 @@ are the full account. This is the map, the things that look like errors and are 
 |---|---|---|
 | Host log: repeated 500 with *Jinja Exception: System message must be at the beginning*; Codex says *high demand* | Codex injected a `developer` message after user turns (e.g. after a command approval); Qwen3.8 template raises | `patch-chat-template.sh`, restart llama-server with the output |
 | `bwrap: No permissions to create a new namespace` / *needs access to create user namespaces* | Docker default seccomp blocks `unshare`/`mount`/`pivot_root` | `seccomp.json` in `runArgs`; needs recreate |
+| `bwrap: Can't mount proc on /proc: Operation not permitted`; Codex says *Sandbox hiccup, retrying* then *Sandbox is broken in this environment* | Docker masks `/proc` paths, kernel refuses a fresh procfs in a user namespace; Codex's fallback misses bubblewrap 0.12's wording | `bwrap-shim.sh` on PATH as `bwrap` (`which bwrap` → `/usr/local/bin/bwrap`); needs rebuild |
 | Codex thinks context is 32768 while server has more | Wrapper not on PATH, or server unreachable at launch | `which codex` must be `~/.local/bin/codex`; restart Codex |
 
 ## Not errors
@@ -47,6 +53,7 @@ curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx   # cont
 curl -s $LLAMA_SERVER_URL/props | jq -r .chat_template | grep -n raise_exception   # template guards
 codex exec -s read-only "Reply with the single word OK"                   # end-to-end (not --json: waits on stdin)
 unshare -Ur true && codex sandbox -- true && echo sandbox-ok              # sandbox works
+codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx'  # 1st ok, 2nd denied
 ```
 
 The four-shape Responses probe for message-ordering failures is in the README →

@@ -54,6 +54,16 @@ per-model patch table is the only model-specific part.
 Single-model llama-server ignores the `model` field. Kept as the fallback for when the wrapper
 cannot reach the server at launch.
 
+## 2026-09-20 — bwrap shim instead of `systempaths=unconfined` (temporary)
+
+Codex's sandbox failed at `--proc /proc` (Docker's masked `/proc`; openai/codex#44329). The
+Docker-side fix unmasks `/proc/kcore`, `/proc/sys` etc. for the whole container to serve one
+tool, and the container's isolation is the outer moat. Landlock-only mode (`use_legacy_landlock`)
+panics under `workspace-write` in 0.155.1. The shim reproduces Codex's own `--no-proc` fallback
+at the PATH level; it lives in `/usr/local/bin` rather than `~/.local/bin` because Codex skips a
+`bwrap` found under the current directory, which `~` can be. It is a stopgap: remove it once
+openai/codex#44329 is fixed, not a permanent part of the container.
+
 ## Earlier (from git history)
 
 - No root, no sudo, setuid stripped, `no-new-privileges`: the agent runs confined to `vscode`;

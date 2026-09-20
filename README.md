@@ -109,10 +109,37 @@ Docker's default seccomp profile blocks the syscalls involved (`unshare`, `mount
 needs access to create user namespaces"* and every command needs escalation.
 
 The container therefore runs with `.devcontainer/seccomp.json`: Docker's default profile with
-exactly those syscalls allowed unconditionally — nothing else is loosened. Verify from inside:
+exactly those syscalls allowed unconditionally — nothing else is loosened.
+
+That gets bubblewrap its namespaces; one more thing stands between it and Docker. Codex asks
+bubblewrap for a fresh procfs (`--proc /proc`), and Docker masks parts of the container's
+`/proc` (`/proc/kcore`, `/proc/sys`, …), which makes the kernel refuse a new procfs from an
+unprivileged user namespace: *"bwrap: Can't mount proc on /proc: Operation not permitted"*,
+surfacing in Codex as *"Sandbox hiccup, retrying"* and then *"Sandbox is broken in this
+environment"*. Codex has a fallback for exactly this — rerun without `--proc` — but it
+recognises the failure only by bubblewrap's pre-0.12 wording (`/newroot/proc`), and Debian 13
+ships 0.12.0 ([openai/codex#44329](https://github.com/openai/codex/issues/44329)). Docker's
+own remedy, `--security-opt systempaths=unconfined`, unmasks those paths for the whole
+container, which is the wrong trade.
+
+**Temporary workaround, until that issue is fixed upstream:** `.devcontainer/bwrap-shim.sh` is
+installed as `/usr/local/bin/bwrap`, ahead of the real binary. It probes once, drops `--proc`
+if the kernel refuses it, and `exec`s `/usr/bin/bwrap` with everything else untouched — the
+same decision Codex's own fallback would make. The sandbox then runs with the container's
+`/proc` bind-mounted instead of a fresh one. What that costs: sandboxed
+commands see the container's process list (`ps` shows PIDs from outside), and with it the
+command lines of other processes in the container. What it does not cost: the user, PID, IPC
+and network namespaces, the read-only or tmpfs root, the writable-roots list, `--cap-drop ALL`
+and the seccomp stage are all still applied, and the user namespace still blocks `/proc/<pid>/`
+`root`, `cwd`, `environ` and signals for processes outside the sandbox.
+
+When bumping `CODEX_VERSION`, check whether the issue is closed; if it is, delete the shim, its
+`COPY` line in the Dockerfile and this paragraph, rebuild, and confirm the commands below still
+pass without it. Verify from inside:
 
 ```bash
 unshare -Ur true && codex sandbox -- true && echo sandbox-ok
+codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx' # first ok, second denied
 ```
 
 `make-seccomp.sh` regenerates the file from the current upstream default profile; run it
@@ -439,7 +466,7 @@ everyone in the container. That is the intent; none are needed for normal develo
 
 - BuildKit cache mounts hold apt's `.deb` downloads and package lists between builds.
 - Layers are ordered coldest first: apt, then uv, then the pinned SpecStory and Codex downloads.
-- `codex-config.toml` and `codex-wrapper.sh` are copied last, so editing them rebuilds only trivial layers, not the toolchain.
+- `codex-config.toml`, `codex-wrapper.sh` and `bwrap-shim.sh` are copied after the toolchain, so editing them rebuilds only trivial layers.
 - `seccomp.json` is a run-time option, not part of the image; changing it needs a container restart, not a rebuild.
 
 ## Other architectures
