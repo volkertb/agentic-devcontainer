@@ -47,7 +47,7 @@ not `127.0.0.1`, which inside a container means the container itself.
 
 ```toml
 model_provider = "llamacpp"
-model = "local"               # any name: a single-model llama-server ignores it
+model = "local"               # fallback only, see below
 model_context_window = 32768  # fallback only, see below
 
 [model_providers.llamacpp]
@@ -77,32 +77,40 @@ If Codex complains about its own sandbox, note it is already inside a container 
 
 Two things you will see that are not errors:
 
-- `Model metadata for 'local' not found. Defaulting to fallback metadata` at startup. Codex
+- `Model metadata for '<model>' not found. Defaulting to fallback metadata` at startup. Codex
   keeps a built-in table of per-model metadata (context window, reasoning support, truncation
-  policy) keyed by OpenAI model names; `local` is not in it, so generic fallbacks apply.
-  `model_context_window` overrides the one value that matters. The name does not have to match
-  the server's: a llama-server serving one model ignores the `model` field entirely, which is
-  why the `curl` above works without an `-a local` alias on the host.
+  policy) keyed by OpenAI model names; a local model is not in it, so generic fallbacks apply.
+  The context window is the one value that matters, and it is supplied separately (see below).
+  The model name itself does not have to match the server's: a llama-server serving one model
+  ignores the `model` field entirely, which is why the `curl` above works with `"model":"local"`.
 - `unsupported Responses tool type 'namespace' skipped` (and `'web_search'`) in the server log.
   llama-server drops the Codex tool types it does not implement and carries on.
 
-### Context window
+### Model and context window
 
-Codex cannot ask a provider for its context size — its model metadata is a static catalog
-of OpenAI models — and `config.toml` cannot compute values. So `codex` on `PATH` is a wrapper
-(`.devcontainer/codex-wrapper.sh`, installed as `~/.local/bin/codex`, ahead of the real
-binary) that asks llama-server at launch and passes the answer as a command-line override:
+Codex cannot ask a provider what it serves or how large its context is — its model metadata
+is a static catalog of OpenAI models — and `config.toml` cannot compute values. So `codex` on
+`PATH` is a wrapper (`.devcontainer/codex-wrapper.sh`, installed as `~/.local/bin/codex`,
+ahead of the real binary) that asks llama-server at launch and passes the answers as
+command-line overrides:
 
 ```bash
+curl -s $LLAMA_SERVER_URL/v1/models | jq -r .data[0].id                  # model id
 curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx   # per-slot n_ctx
-codex -c model_context_window=<that>                                      # what the wrapper runs
+codex -c model="<id>" -c model_context_window=<n_ctx>                     # what the wrapper runs
 ```
 
-The value is read once, when Codex starts; restart Codex after restarting llama-server with a
-different `-c`. If the server is unreachable at launch the wrapper falls through to the plain
-binary, and `model_context_window` from `config.toml` applies — that is the only reason it is
-still there. `specstory run codex` goes through the wrapper too, since it resolves `codex` via
-`PATH`. `/usr/local/bin/codex` remains the unwrapped binary if you ever need it.
+The values are read once, when Codex starts; restart Codex after restarting llama-server with
+a different model or `-c`. Whatever the wrapper cannot fetch — typically because the server is
+not up yet — is left to `config.toml`, which is the only reason `model` and
+`model_context_window` are still set there. `specstory run codex` goes through the wrapper
+too, since it resolves `codex` via `PATH`. `/usr/local/bin/codex` remains the unwrapped binary
+if you ever need it.
+
+The model id is whatever `/v1/models` lists first: the `-a` alias if llama-server was started
+with one, otherwise the model's name or path. A server hosting several models (router mode)
+lists them all, and "first" is then arbitrary — set `model` in `config.toml` and drop the
+`model` line from the wrapper in that case.
 
 ## SpecStory
 
