@@ -18,5 +18,6 @@ The live-server and Codex probes are in `.devcontainer/agent_docs/codex-llama-se
 | `Dockerfile` | Needs a rebuild. Cannot verify from inside — say so. A wrapper/config copied by hand into the running container (e.g. `~/.local/bin/codex`) is a stand-in until then; say that too |
 | `bwrap-shim.sh` | Copy to `~/.local/bin/bwrap` as a stand-in (also first on PATH), then the two `codex sandbox` probes in the probes doc and a `codex exec -s workspace-write` that touches a file |
 | `codex-config.toml` / `codex-wrapper.sh` | `codex exec -s read-only "Reply with the single word OK"`, then inspect the newest rollout (probes doc) |
+| `specstory-config.toml` | `install -m 0644 .devcontainer/specstory-config.toml ~/.specstory/cli/config.toml` as the stand-in, then `specstory check` must list it as the valid user config and `specstory sync` must run without the cloud-sync warning. Stash `.specstory/cli/config.toml` for that run: the project-level file overrides the user-level one and would mask a broken key |
 | README command snippets | Run them exactly as written |
 | `.devcontainer/AGENTS.md`, `.devcontainer/agent_docs/` | Must make sense in a project that is *not* this one: no paths or facts specific to this repo |
