@@ -1,4 +1,8 @@
 # syntax=docker/dockerfile:1
+# SPDX-FileCopyrightText: 2026 Volkert de Buisonjé <volkertb@users.noreply.github.com>
+# SPDX-FileContributor: Claude Opus 5 <noreply@anthropic.com>
+# SPDX-License-Identifier: Apache-2.0
+
 # BuildKit syntax directive: required for the cache mounts used below.
 
 # Debian 13 "trixie" devcontainer base: ships git and the `vscode` user (uid 1000).

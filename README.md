@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Volkert de Buisonjé <volkertb@users.noreply.github.com>
+SPDX-FileContributor: Claude Opus 5 <noreply@anthropic.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Generic dev container
 
 Debian-based dev container for agentic coding: non-root user, a broad CLI toolchain,
@@ -214,3 +220,7 @@ MCR publishes amd64 and arm64 only. For riscv64, set the `BASE_IMAGE` build arg 
 the Dockerfile creates the `vscode` user when the base image lacks it. uv ships a `riscv64gc` build
 and is installed there too. SpecStory and Codex publish no riscv64 binaries — those steps skip
 themselves rather than failing the build, so you get a working container without those two tools.
+
+## License
+
+Apache-2.0 — see [LICENSE.md](LICENSE.md).

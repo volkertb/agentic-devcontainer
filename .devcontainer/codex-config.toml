@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Volkert de Buisonjé <volkertb@users.noreply.github.com>
+# SPDX-FileContributor: Claude Opus 5 <noreply@anthropic.com>
+# SPDX-License-Identifier: Apache-2.0
+
 # Codex -> llama-server on the host. Copied to ~/.codex/config.toml at build time.
 # The host is reachable as host.docker.internal, never 127.0.0.1, from inside a container.
 

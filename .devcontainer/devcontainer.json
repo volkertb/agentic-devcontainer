@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Volkert de Buisonjé <volkertb@users.noreply.github.com>
+// SPDX-FileContributor: Claude Opus 5 <noreply@anthropic.com>
+// SPDX-License-Identifier: Apache-2.0
+
 // Generic dev container: Debian + common CLI toolchain, non-root user,
 // Claude Code / Codex / SpecStory, and a llama-server on the host.
 {
