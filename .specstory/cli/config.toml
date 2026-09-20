@@ -19,7 +19,7 @@
 
 [cloud_sync]
 # Sync session data to SpecStory Cloud. (default: true, when logged in to SpecStory Cloud)
-# enabled = false # equivalent to --no-cloud-sync
+enabled = false # equivalent to --no-cloud-sync
 
 [logging]
 # Write logs to .specstory/debug/debug.log (default: false)
@@ -46,7 +46,7 @@
 [analytics]
 # Send anonymous product usage analytics to help improve SpecStory.
 # Default: true
-# enabled = false # equivalent to --no-usage-analytics
+enabled = false # equivalent to --no-usage-analytics
 
 [telemetry]
 # OTLP gRPC collector endpoint (e.g., "localhost:4317" or "http://localhost:4317")
