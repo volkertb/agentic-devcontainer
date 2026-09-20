@@ -33,6 +33,7 @@ devcontainer exec --workspace-folder . bash
 ```
 
 VS Code, JetBrains and Zed pick the config up automatically when you open the folder.
+JetBrains currently cannot start it because of a bug on their side; see *Codex's Linux sandbox*.
 
 ## How to use it in your own project
 
@@ -118,6 +119,16 @@ unshare -Ur true && codex sandbox -- true && echo sandbox-ok
 when Docker's profile changes and commit the result. If you would rather not allow user
 namespaces at all, remove the `seccomp=` line from `runArgs` and set
 `sandbox_mode = "danger-full-access"` in `config.toml` — the container is the sandbox then.
+
+Known issue, as of 2026-09-20: JetBrains IDEs fail to create the container with `Status 500:
+Decoding seccomp profile failed: invalid character '/' looking for beginning of value`. Their
+dev-container support passes `runArgs` to the engine API verbatim instead of reading the profile
+file the way the `docker` CLI does — [IJPL-67749](https://youtrack.jetbrains.com/issue/IJPL-67749),
+open since March 2024. The devcontainer CLI (which VS Code and Codespaces use) hands `runArgs`
+to `docker run` unchanged, and the `docker` CLI reads the file itself, so those should be fine —
+not yet confirmed by an actual run. To stay in JetBrains until it is fixed, comment out the
+`seccomp=` line in `runArgs`; everything else will then work, except for Codex's sandbox — see
+the previous paragraph for what to set instead.
 
 Two things you will see that are not errors:
 

@@ -39,6 +39,7 @@
     "--security-opt=no-new-privileges:true",
     // Docker's default seccomp profile plus the syscalls bubblewrap needs for unprivileged
     // user namespaces, so Codex's Linux sandbox works. Regenerate with make-seccomp.sh.
+    // JetBrains IDEs cannot apply this line (IJPL-67749); see README → Codex's Linux sandbox.
     "--security-opt=seccomp=${localWorkspaceFolder}/.devcontainer/seccomp.json",
     // Makes the host reachable as host.docker.internal on native Linux Docker too.
     "--add-host=host.docker.internal:host-gateway",

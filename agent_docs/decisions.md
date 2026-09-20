@@ -23,6 +23,13 @@ baked into the image, and a volume would shadow it after the first mount, silent
 config changes on rebuild. Instead: `specstory sync` + a raw-transcript copy before rebuilds,
 and durable context in the AGENTS files. See `.devcontainer/agent_docs/session-continuity.md`.
 
+## 2026-09-20 — seccomp stays a file path in `runArgs` although JetBrains cannot apply it
+
+JetBrains' dev-container support passes `seccomp=<file>` to the engine API verbatim instead of
+reading the file like the `docker` CLI does (IJPL-67749, open since 2024). Inline JSON would fix
+JetBrains but break the CLI, which treats anything but `unconfined` as a file name. Not worked
+around: the config targets the spec and conforming implementations; README notes the bug.
+
 ## 2026-09-20 — Custom seccomp profile rather than `seccomp=unconfined`
 
 Codex's sandbox needs unprivileged user namespaces; Docker's default profile blocks them.
