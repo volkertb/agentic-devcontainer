@@ -100,12 +100,45 @@ internal detail. Only `.specstory/debug/` is git-ignored by default.
 The container reaches the host as `host.docker.internal` on every OS.
 
 - **macOS / Windows (Docker Desktop):** works with llama-server bound to `127.0.0.1`. Nothing to do.
-- **Linux (native Docker):** `host.docker.internal` resolves to the bridge gateway (usually
-  `172.17.0.1`), which cannot reach a loopback-bound process. Bind llama-server to the bridge
-  address instead — still not exposed to your LAN:
+- **Linux (native Docker):** `host.docker.internal` resolves to the bridge gateway, which
+  cannot reach a loopback-bound process. That gateway is `172.17.0.1` in the common case
+  (Docker's default `docker0` bridge, which is what this project's containers use, since
+  nothing here defines a custom network) — but it isn't guaranteed: Docker picks a different
+  subnet if `172.17.0.0/16` was already taken when Docker was first installed, or if
+  `/etc/docker/daemon.json` sets custom `default-address-pools`. Verify it from inside the
+  container before copying the commands below verbatim:
 
   ```bash
+  # Run this inside the container:
+  getent hosts host.docker.internal
+  ```
+
+  If that prints something other than `172.17.0.1`, substitute your actual address in the
+  commands that follow. Bind llama-server to that bridge address — still not exposed to your LAN:
+
+  ```bash
+  # Run this in the host environment:
   llama-server --host 172.17.0.1 --port 9931   # ...plus your own model/tuning flags
+  ```
+
+  A host firewall (e.g. `ufw`) can still block this: binding to `172.17.0.1` is an
+  ordinary listening address as far as the kernel's INPUT chain is concerned, and
+  Docker does not manage that chain — it only handles traffic it originates itself
+  (published container ports, NAT), not a container reaching a host-bound process.
+  If `curl` from inside the container times out (not "connection refused") even
+  though the port is listening, allow it explicitly, scoped to just the docker
+  bridge interface and this address:
+
+  ```bash
+  # Run this in the host environment:
+  sudo ufw allow in on docker0 to 172.17.0.1 port 9931 proto tcp comment 'Allow access to local llama-server from Docker containers'
+  ```
+
+  This persists across reboots like any other `ufw` rule. To remove it later:
+
+  ```bash
+  # Run this in the host environment:
+  sudo ufw delete allow in on docker0 to 172.17.0.1 port 9931 proto tcp comment 'Allow access to local llama-server from Docker containers'
   ```
 
   Binding `0.0.0.0` also works but exposes the endpoint to your network; prefer the bridge address.
