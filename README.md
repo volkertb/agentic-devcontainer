@@ -394,6 +394,7 @@ pinning is what makes a checksum meaningful in the first place.
 | Codex CLI | SHA256 pinned in the Dockerfile — upstream publishes none (see below) |
 | Dev container features | Digests in `devcontainer-lock.json`, checked by the devcontainer CLI |
 | Base image | Tag only — pin a digest to harden (see below) |
+| `codex-config.toml`, `specstory-config.toml`, `codex-wrapper.sh`, `bwrap-shim.sh` | Not fetched — `COPY`'d from the checked-out `.devcontainer/`, so git history is the provenance |
 
 A mismatch fails the build: each `RUN` uses `set -eux` with `sha256sum -c`, so a tampered or
 truncated download stops the build rather than being installed.
