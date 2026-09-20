@@ -7,14 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 # Generic dev container
 
 Debian-based dev container for agentic coding: non-root user, a broad CLI toolchain,
-Claude Code + Codex CLI + SpecStory, and Codex wired to a llama-server on the host.
+Claude Code, Codex CLI and SpecStory.
 
-## Prerequisite
+## Which agents, which models
 
-A `llama-server` — or any server speaking the OpenAI *Responses* API — listening on
-**port 9931 on your host**. Choosing, tuning and starting that model server is out of scope
-here; this container only consumes it. See *llama-server on the host* below for the one
-host-side detail that matters (which address it binds to).
+- **Claude Code** works as-is with an Anthropic account; nothing here changes it.
+- **Codex CLI** is preconfigured for *local* models served by a `llama-server` — or any
+  server speaking the OpenAI *Responses* API — listening on **port 9931 on your host**.
+  Choosing, tuning and starting that server is up to you; this container only consumes it.
+  See *llama-server on the host* below for the one host-side detail that matters.
+  To use Codex with OpenAI or another hosted provider instead, edit
+  `.devcontainer/codex-config.toml` yourself; that setup is not covered here.
+- **Other agents** are not included. Install them in the container, or add them to the
+  Dockerfile if you want them to survive a rebuild.
+
+None of this is mandatory. The container is just as usable with Claude Code alone, or
+with whatever agent you bring, without a local model server.
 
 ## First run
 
