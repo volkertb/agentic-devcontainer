@@ -37,3 +37,7 @@ behaviour changes. Any command shown there must have been run as written.
 - Scripts are bash with `set -euo pipefail` and must pass `shellcheck`. Run them for real
   before claiming they work; see `agent_docs/verifying-changes.md`.
 - When a choice isn't explained by the code, add a dated entry to `agent_docs/decisions.md`.
+- `.specstory/` is committed and synced by the user only, between sessions — never stage it,
+  even when asked to "commit everything". Agents may audit it for secrets when asked; the
+  transcript of a running session is still being written, so an in-session commit can never
+  be a clean snapshot.
