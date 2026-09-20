@@ -53,7 +53,7 @@ curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx   # cont
 curl -s $LLAMA_SERVER_URL/props | jq -r .chat_template | grep -n raise_exception   # template guards
 codex exec -s read-only "Reply with the single word OK"                   # end-to-end (not --json: waits on stdin)
 unshare -Ur true && codex sandbox -- true && echo sandbox-ok              # sandbox works
-codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx'  # 1st ok, 2nd denied
+codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx'  # expect "Read-only file system", exit 1
 ```
 
 The four-shape Responses probe for message-ordering failures is in the README →

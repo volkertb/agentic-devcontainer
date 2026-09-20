@@ -155,7 +155,7 @@ pass without it. Verify from inside:
 
 ```bash
 unshare -Ur true && codex sandbox -- true && echo sandbox-ok
-codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx' # first ok, second denied
+codex sandbox -c 'sandbox_mode="workspace-write"' -- sh -c 'touch .sbx && rm .sbx && touch ~/.sbx' # expect "Read-only file system" and exit 1
 ```
 
 `make-seccomp.sh` regenerates the file from the current upstream default profile; run it
