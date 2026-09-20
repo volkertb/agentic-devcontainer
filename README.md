@@ -34,6 +34,25 @@ devcontainer exec --workspace-folder . bash
 
 VS Code, JetBrains and Zed pick the config up automatically when you open the folder.
 
+## Use it in your own project
+
+Everything lives in `.devcontainer/`; nothing in it refers to this repository.
+
+```bash
+cp -r /path/to/agentic-devcontainer/.devcontainer  /path/to/your-project/
+cd /path/to/your-project
+cp .devcontainer/.env.example .devcontainer/.env
+printf '%s\n' '.devcontainer/.env' '.claude-backup/' 'chat-template-patched.jinja' >> .gitignore
+echo '@.devcontainer/AGENTS.md' >> AGENTS.md       # ln -s AGENTS.md CLAUDE.md if you have neither
+devcontainer up --workspace-folder .
+```
+
+Then, optionally: change `"name"` in `devcontainer.json` so the container is recognisable in
+`docker ps`, and delete `.devcontainer/AGENTS.md` and `.devcontainer/agent_docs/` if you
+don't use coding agents in it. The `.gitignore` lines cover, in order: your secrets, the raw
+transcript backup, and the output of the chat-template script — see *SpecStory* and
+*Model-specific considerations*.
+
 ## What's inside
 
 | | |
