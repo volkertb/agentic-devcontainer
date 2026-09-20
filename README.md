@@ -147,11 +147,23 @@ specstory check          # which agents it can see
 specstory run claude     # Claude Code, with auto-save
 specstory run codex      # Codex, with auto-save
 specstory watch          # save sessions from an agent you start yourself
+specstory sync           # convert sessions that already happened in this directory
 specstory search <query> # search past sessions
 ```
 
-`specstory sync`, `specstory skills` and `specstory login` are cloud features (Pro plan);
-everything above is local-only and needs no account.
+All of that is local-only and needs no account; `specstory login` and `specstory skills` are
+the cloud (Pro) features.
+
+**Before rebuilding the container, run `specstory sync`.** Agent state lives in the container's
+home — `~/.claude`, `~/.codex` — and is not mounted, so it is lost on rebuild. `sync` writes
+every Claude Code and Codex session for this directory to `.specstory/history/`, which is on
+your host. To be able to *resume* a session afterwards rather than just read it, also copy the
+raw transcripts out and back:
+
+```bash
+cp -a ~/.claude/projects .claude-backup/                 # before the rebuild (git-ignored)
+cp -a .claude-backup/projects ~/.claude/ && claude --resume   # after
+```
 
 **Before committing `.specstory/history/`, read it.** Transcripts can contain keys, paths and
 internal detail. Only `.specstory/debug/` is git-ignored by default.

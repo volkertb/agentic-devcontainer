@@ -16,3 +16,7 @@ chat-template-patched.jinja
 
 # JetBrains IDE state.
 .idea/
+
+# Raw Claude Code transcripts copied out of ~/.claude before a container rebuild, so
+# sessions can be resumed afterwards. May contain anything said in a session.
+.claude-backup/
