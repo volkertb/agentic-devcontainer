@@ -80,8 +80,24 @@ A Responses-shaped object back means the integration surface is good; then just 
 For a one-off test against a different endpoint without editing the config,
 `CODEX_OSS_BASE_URL=http://host.docker.internal:9931/v1` overrides Codex's built-in OSS provider.
 
-If Codex complains about its own sandbox, note it is already inside a container — setting
-`sandbox_mode` in `config.toml` is the knob to reach for.
+### Codex's Linux sandbox
+
+Codex runs commands inside a bubblewrap sandbox, which needs unprivileged user namespaces.
+Docker's default seccomp profile blocks the syscalls involved (`unshare`, `mount`,
+`pivot_root`, …), so out of the box Codex warns *"Codex's Linux sandbox uses bubblewrap and
+needs access to create user namespaces"* and every command needs escalation.
+
+The container therefore runs with `.devcontainer/seccomp.json`: Docker's default profile with
+exactly those syscalls allowed unconditionally — nothing else is loosened. Verify from inside:
+
+```bash
+unshare -Ur true && codex sandbox -- true && echo sandbox-ok
+```
+
+`make-seccomp.sh` regenerates the file from the current upstream default profile; run it
+when Docker's profile changes and commit the result. If you would rather not allow user
+namespaces at all, remove the `seccomp=` line from `runArgs` and set
+`sandbox_mode = "danger-full-access"` in `config.toml` — the container is the sandbox then.
 
 Two things you will see that are not errors:
 
@@ -359,12 +375,17 @@ everyone in the container. That is the intent; none are needed for normal develo
 - The hardening is enforced at two levels deliberately: the image removes the tools, and
   `no-new-privileges` blocks the whole class of escalation even if a feature or a later
   `apt-get install` puts a setuid binary back.
+- The seccomp profile allows unprivileged user namespaces so Codex can sandbox its commands.
+  That is the same thing a stock Linux desktop allows, and the container's own boundary is
+  unchanged, but it does expose the kernel's user-namespace code to whatever runs inside.
+  See *Codex's Linux sandbox* for how to turn it back off.
 
 ## Build performance
 
 - BuildKit cache mounts hold apt's `.deb` downloads and package lists between builds.
 - Layers are ordered coldest first: apt, then uv, then the pinned SpecStory and Codex downloads.
 - `codex-config.toml` and `codex-wrapper.sh` are copied last, so editing them rebuilds only trivial layers, not the toolchain.
+- `seccomp.json` is a run-time option, not part of the image; changing it needs a container restart, not a rebuild.
 
 ## Other architectures
 

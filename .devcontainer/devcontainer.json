@@ -37,6 +37,9 @@
     // Kernel-enforced: no setuid binary or file capability can ever elevate, whatever
     // a feature or later install puts in the image. Remove this to use ALLOW_SUDO=true.
     "--security-opt=no-new-privileges:true",
+    // Docker's default seccomp profile plus the syscalls bubblewrap needs for unprivileged
+    // user namespaces, so Codex's Linux sandbox works. Regenerate with make-seccomp.sh.
+    "--security-opt=seccomp=${localWorkspaceFolder}/.devcontainer/seccomp.json",
     // Makes the host reachable as host.docker.internal on native Linux Docker too.
     "--add-host=host.docker.internal:host-gateway",
     // Secrets and per-machine overrides. Copy .env.example to .env before first start.
