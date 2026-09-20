@@ -35,6 +35,22 @@ devcontainer exec --workspace-folder . bash
 VS Code, JetBrains and Zed pick the config up automatically when you open the folder.
 JetBrains currently cannot start it because of a bug on their side; see *Codex's Linux sandbox*.
 
+Nothing under the container's home directory survives a rebuild, and that includes
+`~/.gitconfig`, so `git commit` inside the container fails with *Author identity unknown* until
+you tell it who you are. Set the identity on the repository instead of globally — `.git/` is
+in the workspace bind mount and persists:
+
+```bash
+git config user.name "Your Name"
+git config user.email "you@example.com"
+```
+
+Without `--global` this lands in `.git/config`, so it is per-project, survives rebuilds, and
+does not leak the identity into other repositories the container might see. The same goes for
+any other git setting you want to keep (`commit.gpgsign`, `core.sshCommand`, …). Your host's
+`~/.gitconfig` is not mounted on purpose: it may name signing keys, credential helpers and
+paths that do not exist inside the container.
+
 ## How to use it in your own project
 
 See instructions below. Everything lives in `.devcontainer/`; nothing in it refers to this repository.

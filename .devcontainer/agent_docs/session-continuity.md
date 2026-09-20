@@ -15,6 +15,7 @@ Nothing under the container user's home is mounted. A rebuild or recreate discar
 | `~/.claude/.credentials.json`, settings | Login — must log in again after a rebuild |
 | `~/.codex/sessions/**/rollout-*.jsonl` | Codex transcripts |
 | `~/.codex/*.sqlite`, `~/.codex/rules/` | Codex state, approved-command rules |
+| `~/.gitconfig` | Git identity — set it per repo instead (`git config user.name`, no `--global`); README → *First run* |
 
 The workspace folder is a bind mount and survives.
 
