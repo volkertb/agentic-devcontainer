@@ -387,6 +387,7 @@ pinning is what makes a checksum meaningful in the first place.
 | uv / uvx | SHA256 from the release's `.tar.gz.sha256`, checked before install |
 | SpecStory CLI | SHA256 from the release's `checksums.txt`, checked before install |
 | Codex CLI | SHA256 pinned in the Dockerfile — upstream publishes none (see below) |
+| Dev container features | Digests in `devcontainer-lock.json`, checked by the devcontainer CLI |
 | Base image | Tag only — pin a digest to harden (see below) |
 
 A mismatch fails the build: each `RUN` uses `set -eux` with `sha256sum -c`, so a tampered or
@@ -415,6 +416,12 @@ docker buildx imagetools inspect mcr.microsoft.com/devcontainers/base:trixie | h
 
 Pinning the digest freezes OS security updates until you bump it — worth it for reproducible
 builds, but only if you refresh it deliberately.
+
+The two features in `devcontainer.json` (`node`, `claude-code`) are requested by major version
+only; `devcontainer-lock.json` records the exact version and digest that were resolved, and the
+CLI refuses a feature whose content no longer matches. Commit it. To pick up newer features,
+run `devcontainer upgrade --workspace-folder .` (add `--dry-run` to preview), rebuild, and
+commit the result.
 
 ## Working as root
 
