@@ -47,8 +47,8 @@ not `127.0.0.1`, which inside a container means the container itself.
 
 ```toml
 model_provider = "llamacpp"
-model = "local"               # must match llama-server's -a alias
-model_context_window = 32768  # keep in sync with llama-server's -c
+model = "local"               # any name: a single-model llama-server ignores it
+model_context_window = 32768  # keep in sync with llama-server's -c (check /props)
 
 [model_providers.llamacpp]
 name = "llama.cpp"
@@ -74,6 +74,21 @@ For a one-off test against a different endpoint without editing the config,
 
 If Codex complains about its own sandbox, note it is already inside a container — setting
 `sandbox_mode` in `config.toml` is the knob to reach for.
+
+Two things you will see that are not errors:
+
+- `Model metadata for 'local' not found. Defaulting to fallback metadata` at startup. Codex
+  keeps a built-in table of per-model metadata (context window, reasoning support, truncation
+  policy) keyed by OpenAI model names; `local` is not in it, so generic fallbacks apply.
+  `model_context_window` overrides the one value that matters. The name does not have to match
+  the server's: a llama-server serving one model ignores the `model` field entirely, which is
+  why the `curl` above works without an `-a local` alias on the host.
+- `unsupported Responses tool type 'namespace' skipped` (and `'web_search'`) in the server log.
+  llama-server drops the Codex tool types it does not implement and carries on.
+
+`model_context_window` should not exceed what the server actually allocated. Check with
+`curl -s $LLAMA_SERVER_URL/props | jq .default_generation_settings.n_ctx` and raise the
+setting if the server has more headroom than 32768.
 
 ## SpecStory
 
@@ -142,6 +157,80 @@ The container reaches the host as `host.docker.internal` on every OS.
   ```
 
   Binding `0.0.0.0` also works but exposes the endpoint to your network; prefer the bridge address.
+
+## Model-specific considerations
+
+Codex was built against OpenAI's models, and a local model's chat template may reject
+things Codex sends as a matter of course. The general shape of the problem is described
+first; per-model fixes follow in their own sections.
+
+### Mid-conversation developer messages
+
+Codex does not confine system-level instructions to the start of a conversation. It injects
+`developer`-role messages between turns whenever its state changes — `Approved command prefix
+saved: ["ls"]` after you approve a command, `<turn_context>` after a model or effort switch,
+and so on. A chat template that only tolerates system/developer messages at the very
+beginning will throw on the next request, and every request after it, since the message is
+now part of the history.
+
+Symptoms:
+
+- Codex reports *"We're currently experiencing high demand, which may cause temporary
+  errors"* and gives up after five retries. The wording is misleading; it is Codex's generic
+  text for any HTTP 500.
+- The host log shows the same `got exception: {"error":{"code":500,...}}` repeated every
+  second or so — that is the retry loop — and, if you look at the message, a *Jinja
+  Exception* naming the guard in the template that fired.
+
+To confirm it is the ordering and not something else, replay the four shapes Codex uses
+from inside the container. Only the last one should fail:
+
+```bash
+r() { curl -s $LLAMA_SERVER_URL/v1/responses -H "Content-Type: application/json" -d "$1" \
+      | jq -c '{status, err: .error.message}'; }
+r '{"model":"local","instructions":"Be terse.","input":[{"role":"user","content":"hi"}]}'
+r '{"model":"local","input":[{"role":"developer","content":"Be terse."},{"role":"user","content":"hi"}]}'
+r '{"model":"local","instructions":"Be terse.","input":[{"role":"developer","content":"x"},{"role":"user","content":"hi"}]}'
+r '{"model":"local","input":[{"role":"user","content":"hi"},{"role":"developer","content":"x"},{"role":"user","content":"hi"}]}'
+```
+
+You can also see the exact message Codex inserted: sessions are logged as JSONL under
+`~/.codex/sessions/`, and this prints every item's role in order:
+
+```bash
+jq -c 'select(.type=="response_item") | .payload | {type, role}' ~/.codex/sessions/*/*/*/rollout-*.jsonl
+```
+
+The fix is on the host, in the model's chat template: render a late system/developer
+message in place instead of raising. `.devcontainer/patch-chat-template.sh` does this generically —
+it pulls the live template from the server's `/props`, applies whatever patch it knows for
+that template, and writes the result for `--chat-template-file`:
+
+```bash
+# From the host, or from the container writing into the bind-mounted workspace:
+.devcontainer/patch-chat-template.sh                        # uses $LLAMA_SERVER_URL, writes ./chat-template-patched.jinja
+.devcontainer/patch-chat-template.sh http://127.0.0.1:9931 /path/to/out.jinja
+
+# Then, in the host environment:
+llama-server ... --chat-template-file /path/to/chat-template-patched.jinja
+```
+
+The script only rewrites templates it recognises; if it reports no match, the template is
+either already permissive or phrases its guard differently. Find the guard with
+`curl -s $LLAMA_SERVER_URL/props | jq -r .chat_template | grep -n raise_exception`, add a
+find/replace pair to the `PATCHES` table in the script, and please send it upstream.
+
+Setting `approval_policy = "never"` in `codex-config.toml` avoids the *approved command*
+message specifically, but not the other injections, so it is not a substitute for the
+template fix.
+
+### Qwen3.8
+
+The Qwen3.8 template merges leading system/developer messages into a single system block
+and raises `System message must be at the beginning.` on any later one. The script's
+`Qwen3.8` patch replaces that line with an in-place `<|im_start|>system … <|im_end|>` turn,
+which is what earlier Qwen templates emitted and which the model handles fine. Nothing else
+in the template changes, so tool calling, thinking and reasoning-effort handling are untouched.
 
 ## Download verification
 
