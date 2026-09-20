@@ -23,7 +23,7 @@ behaviour changes. Any command shown there must have been run as written.
 
 ## Layout
 
-- `.devcontainer/` — `devcontainer.json`, `Dockerfile`, `codex-config.toml`, `codex-wrapper.sh`,
+- `.devcontainer/` — `devcontainer.json` (+ `devcontainer-lock.json`), `Dockerfile`, `codex-config.toml`, `codex-wrapper.sh`,
   `bwrap-shim.sh`, `seccomp.json` (+ `make-seccomp.sh`), `patch-chat-template.sh`, `AGENTS.md`,
   `agent_docs/`.
 - `agent_docs/` — this-repo-only detail: `decisions.md`, `verifying-changes.md`.
