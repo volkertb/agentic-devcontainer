@@ -139,6 +139,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Points Codex at the host's llama-server. Edit this file to change model or endpoint.
 COPY --chown=${USERNAME}:${USERNAME} codex-config.toml /home/${USERNAME}/.codex/config.toml
 
+# SpecStory defaults for every project (cloud sync and analytics off). Shipped at build time
+# because ~/.specstory is not persisted; a project's .specstory/cli/config.toml overrides it.
+COPY --chown=${USERNAME}:${USERNAME} specstory-config.toml /home/${USERNAME}/.specstory/cli/config.toml
+
 # `codex` on PATH resolves to this wrapper (~/.local/bin precedes /usr/local/bin below),
 # which passes llama-server's actual context size to the real binary at launch.
 COPY --chown=${USERNAME}:${USERNAME} --chmod=0755 codex-wrapper.sh /home/${USERNAME}/.local/bin/codex

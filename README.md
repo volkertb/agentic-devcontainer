@@ -238,7 +238,12 @@ specstory search <query> # search past sessions
 ```
 
 All of that is local-only and needs no account; `specstory login` and `specstory skills` are
-the cloud (Pro) features.
+the cloud (Pro) features. `.devcontainer/specstory-config.toml` is copied to
+`~/.specstory/cli/config.toml` during the build and turns cloud sync and usage analytics off,
+so `specstory sync` does not warn about the missing login. The version check stays on: it is
+the cue to bump `SPECSTORY_VERSION` and rebuild. A project's own `.specstory/cli/config.toml`
+(SpecStory writes a fully commented template there on first run) or a CLI flag overrides it;
+`specstory check` lists both files.
 
 **Before rebuilding the container, run `specstory sync`.** Agent state lives in the container's
 home — `~/.claude`, `~/.codex` — and is not mounted, so it is lost on rebuild. `sync` writes
@@ -489,7 +494,7 @@ everyone in the container. That is the intent; none are needed for normal develo
 
 - BuildKit cache mounts hold apt's `.deb` downloads and package lists between builds.
 - Layers are ordered coldest first: apt, then uv, then the pinned SpecStory and Codex downloads.
-- `codex-config.toml`, `codex-wrapper.sh` and `bwrap-shim.sh` are copied after the toolchain, so editing them rebuilds only trivial layers.
+- `codex-config.toml`, `specstory-config.toml`, `codex-wrapper.sh` and `bwrap-shim.sh` are copied after the toolchain, so editing them rebuilds only trivial layers.
 - `seccomp.json` is a run-time option, not part of the image; changing it needs a container restart, not a rebuild.
 
 ## Other architectures

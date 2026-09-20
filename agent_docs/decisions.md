@@ -64,6 +64,19 @@ at the PATH level; it lives in `/usr/local/bin` rather than `~/.local/bin` becau
 `bwrap` found under the current directory, which `~` can be. It is a stopgap: remove it once
 openai/codex#44329 is fixed, not a permanent part of the container.
 
+## 2026-09-20 — SpecStory defaults shipped as a user-level config, not patched with sed
+
+`specstory sync` warns "Cloud sync not available" on every run without a login. SpecStory
+reads `~/.specstory/cli/config.toml` (user-level) and `./.specstory/cli/config.toml`
+(project-level, wins per key) and writes a fully commented template to both on first run,
+which is after the build — so there is nothing to `sed` at build time, and a
+`postCreateCommand` would break the offline-creation rule. `~/.specstory` is not persisted,
+so a hand-written user-level file `COPY`'d in the Dockerfile is the only thing that survives
+a rebuild and covers every project that copies `.devcontainer/`. Verified that SpecStory
+leaves a pre-existing file alone. Cloud sync and analytics off; version check kept, because
+the notice is how one learns to bump `SPECSTORY_VERSION`. The same two keys are uncommented in
+this repo's committed project-level file so they also hold when running on the host.
+
 ## Earlier (from git history)
 
 - No root, no sudo, setuid stripped, `no-new-privileges`: the agent runs confined to `vscode`;

@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Volkert de Buisonjé <volkertb@users.noreply.github.com>
+# SPDX-FileContributor: Claude Opus 5 <noreply@anthropic.com>
+# SPDX-License-Identifier: Apache-2.0
+
+# SpecStory user-level config. Copied to ~/.specstory/cli/config.toml at build time, so it
+# applies in every project opened in this container; SpecStory leaves it alone on first run.
+# A project's own .specstory/cli/config.toml, or a CLI flag, overrides any key set here.
+# Every other key keeps its default; the full template with all of them is the one SpecStory
+# writes into a project on first run.
+
+[cloud_sync]
+# Local-only: no account, so no "Cloud sync not available" warning on every sync.
+enabled = false
+
+[analytics]
+# Anonymous product-usage analytics.
+enabled = false
