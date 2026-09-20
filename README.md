@@ -34,12 +34,13 @@ devcontainer exec --workspace-folder . bash
 
 VS Code, JetBrains and Zed pick the config up automatically when you open the folder.
 
-## Use it in your own project
+## How to use it in your own project
 
-Everything lives in `.devcontainer/`; nothing in it refers to this repository.
+See instructions below. Everything lives in `.devcontainer/`; nothing in it refers to this repository.
 
 ```bash
-cp -r /path/to/agentic-devcontainer/.devcontainer  /path/to/your-project/
+cd /path/to/agentic-devcontainer  # If your current working directory is not the root of this project
+cp -r .devcontainer /path/to/your-project/
 cd /path/to/your-project
 cp .devcontainer/.env.example .devcontainer/.env
 printf '%s\n' '.devcontainer/.env' '.claude-backup/' 'chat-template-patched.jinja' >> .gitignore
