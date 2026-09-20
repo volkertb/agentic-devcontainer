@@ -32,6 +32,7 @@ behaviour changes. Any command shown there must have been run as written.
 ## Conventions
 
 - Every file starts with the three SPDX lines; copy the comment style from a neighbouring file.
+  Exceptions: files with no comment syntax (`seccomp.json`, generated) and `LICENSE.md`.
 - Commit subjects: `feat:` / `docs:` / `chore:` + imperative summary; body says why.
   Commit when asked; **never push** — the user pushes.
 - Scripts are bash with `set -euo pipefail` and must pass `shellcheck`. Run them for real
