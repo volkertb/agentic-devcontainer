@@ -9,3 +9,7 @@
 # SpecStory debug logs. Session history under .specstory/history/ is intentionally
 # left tracked — commit it deliberately, and check it for secrets first.
 .specstory/debug/
+
+# Default output of .devcontainer/patch-chat-template.sh — generated from the running
+# llama-server, so it belongs on the host, not in the repo.
+chat-template-patched.jinja
